@@ -1,45 +1,40 @@
-import os
-from dotenv import load_dotenv
+import logging
 from telegram import Update, KeyboardButton, ReplyKeyboardMarkup
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
 
-# Load environment variables
-load_dotenv()
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-ADMIN_IDS = os.getenv("ADMIN_IDS", "").split(",")
+BOT_TOKEN = "YOUR_BOT_TOKEN"
+ADMIN_IDS = [5820996662]
 
-# /start command handler
+logging.basicConfig(level=logging.INFO)
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user
-    location_button = KeyboardButton(text="📍 Send Location", request_location=True)
-    reply_markup = ReplyKeyboardMarkup([[location_button]], resize_keyboard=True, one_time_keyboard=True)
+    location_button = KeyboardButton("📍 Send Live Location", request_location=True)
+    reply_markup = ReplyKeyboardMarkup([[location_button]], resize_keyboard=True)
 
     await update.message.reply_text(
-        f"""👋 হ্যালো {user.first_name or "বন্ধু"}!  
-📡 SparkLife বট-এ স্বাগতম।
-
-এই Bot-এর মাধ্যমে আপনি আপনার লোকেশন শেয়ার করতে পারবেন।
-অনুগ্রহ করে নিচের 📍 Send Location বাটনে ট্যাপ করুন।""",
+        "👋 হ্যালো Boss! SparkLife বট-এ স্বাগতম!\n\n🛰️ নিচের বাটনে ক্লিক করে লাইভ লোকেশন শেয়ার করুন:",
         reply_markup=reply_markup
     )
 
-# location handler
-async def location_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user
-    loc = update.message.location
+async def handle_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.message.from_user
+    location = update.message.location
+
+    msg = (
+        f"📡 New Live Location:\n"
+        f"👤 User: {user.full_name} ({user.id})\n"
+        f"🌐 Lat: {location.latitude}, Lon: {location.longitude}"
+    )
 
     for admin_id in ADMIN_IDS:
-        if admin_id:
-            await context.bot.send_message(
-                chat_id=int(admin_id),
-                text=f"""📍 লোকেশন এসেছে!
-👤 User: {user.full_name} ({user.id})
-🌍 Location: {loc.latitude}, {loc.longitude}"""
-            )
+        await context.bot.send_message(chat_id=admin_id, text=msg)
 
-# Run bot
-if __name__ == "__main__":
+    await update.message.reply_text("✅ আপনার লাইভ লোকেশন সফলভাবে গ্রহণ করা হয়েছে।")
+
+if __name__ == '__main__':
     app = ApplicationBuilder().token(BOT_TOKEN).build()
+
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(MessageHandler(filters.LOCATION, location_handler))
+    app.add_handler(MessageHandler(filters.LOCATION, handle_location))
+
     app.run_polling()
